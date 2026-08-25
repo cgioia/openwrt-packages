@@ -219,6 +219,9 @@ watchcat_monitor_network() {
 
 	ping_family="$(get_ping_family_flag "$address_family")"
 
+	gp_success=", \d?\d% packet loss"
+	gp_servfail="measurement command timed out"
+
 	while true; do
 		# account for the time ping took to return. With a ping time of 5s, ping might take more than that, so it is important to avoid even more delay.
 		time_now="$(cat /proc/uptime)"
@@ -232,17 +235,10 @@ watchcat_monitor_network() {
 		time_lastcheck="$time_now"
 
 		for host in $ping_hosts; do
-			if [ "$ping_iface" != "" ]; then
-				ping_result="$(
-					ping $ping_family -I "$ping_iface" -s "$ping_size" -c 1 "$host" &> /dev/null
-					echo $?
-				)"
-			else
-				ping_result="$(
-					ping $ping_family -s "$ping_size" -c 1 "$host" &> /dev/null
-					echo $?
-				)"
-			fi
+			ping_result="$(
+				globalping ping "$host" from US -C $ping_family 2>&1 | grep -qE -e "$gp_success" -e "$gp_servfail"
+				echo $?
+			)"
 
 			if [ "$ping_result" -eq 0 ]; then
 				time_lastcheck_withinternet="$time_now"
